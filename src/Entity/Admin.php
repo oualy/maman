@@ -7,9 +7,12 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\AdminRepository;
 use ApiPlatform\Core\Annotation\ApiResource;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ApiResource(
+ * normalizationContext={"groups"={"admin:read"}},
+ * denormalizationContext={"groups"={"admin:write"}},
  * collectionOperations={
  * "get"={},
  * "post"={},
@@ -28,38 +31,38 @@ class Admin
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"admin:read"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"admin:read","admin:write"})
      */
     private $nom_admin;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"admin:read","admin:write"})
      */
     private $prenom_admin;
 
     /**
      * @ORM\Column(type="integer")
+     * @Groups({"admin:read"})
      */
     private $code;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Role::class, inversedBy="admine")
-     */
-    private $role;
-
-    /**
      * @ORM\OneToMany(targetEntity=User::class, mappedBy="admins")
      */
-    private $users;
+    private $user;
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
+        $this->user = new ArrayCollection();
     }
+
 
     public function getId(): ?int
     {
@@ -102,30 +105,20 @@ class Admin
         return $this;
     }
 
-    public function getRole(): ?Role
-    {
-        return $this->role;
-    }
-
-    public function setRole(?Role $role): self
-    {
-        $this->role = $role;
-
-        return $this;
-    }
+  
 
     /**
      * @return Collection|User[]
      */
-    public function getUsers(): Collection
+    public function getUser(): Collection
     {
-        return $this->users;
+        return $this->user;
     }
 
     public function addUser(User $user): self
     {
-        if (!$this->users->contains($user)) {
-            $this->users[] = $user;
+        if (!$this->user->contains($user)) {
+            $this->user[] = $user;
             $user->setAdmins($this);
         }
 
@@ -134,7 +127,7 @@ class Admin
 
     public function removeUser(User $user): self
     {
-        if ($this->users->removeElement($user)) {
+        if ($this->user->removeElement($user)) {
             // set the owning side to null (unless already changed)
             if ($user->getAdmins() === $this) {
                 $user->setAdmins(null);
@@ -143,5 +136,4 @@ class Admin
 
         return $this;
     }
-
 }

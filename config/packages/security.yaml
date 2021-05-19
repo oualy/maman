@@ -1,32 +1,60 @@
 security:
-    encoders:
-        App\Entity\User:
-            algorithm: auto
-
+  # Ne pas effacer les identifiants car nous en avons besoin nous le ferons
+  erase_credentials: false
+  encoders:
+    App\Entity\User:
+      algorithm: argon2i
+      # mémoire maximum (en KiB) pouvant être utilisée pour calculer le hash Argon2
+      memory_cost: 1024
+      # nombre de fois que l'algorithme Argon2 doit être exécuté
+      time_cost: 2
+      # nombre de threads à utiliser pour calculer le hash Argon2
+      threads: 2
+    legacy_encoder:
+      algorithm: md5
+      encode_as_base64: false
+      iterations: 1
     # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
     providers:
-        # used to reload user from session & other features (e.g. switch_user)
-        app_user_provider:
-            entity:
-                class: App\Entity\User
-                property: username
+      # used to reload user from session & other features (e.g. switch_user)
+      app_user_provider:
+        entity:
+          class: App\Entity\User
+          property: username
     firewalls:
-        dev:
-            pattern: ^/(_(profiler|wdt)|css|images|js)/
-            security: false
-        main:
-            anonymous: true
-            lazy: true
-            provider: app_user_provider
+      dev:
+        pattern: ^/(_(profiler|wdt)|css|images|js)/
+        security: false
+      login:
+        pattern: ^/api/login
+        stateless: true
+        anonymous: true
+        json_login:
+          check_path: /api/login_check
+          success_handler: lexik_jwt_authentication.handler.authentication_success
+          failure_handler: lexik_jwt_authentication.handler.authentication_failure
+      api:
+        pattern: ^/api
+        stateless: true
+        guard:
+          authenticators:
+            - lexik_jwt_authentication.jwt_token_authenticator
+        # activate different ways to authenticate
+        # https://symfony.com/doc/current/security.html#firewalls-authentication
 
-            # activate different ways to authenticate
-            # https://symfony.com/doc/current/security.html#firewalls-authentication
-
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
+        # https://symfony.com/doc/current/security/impersonating_user.html
+        # switch_user: true
 
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+       - { path: ^/admins, roles: ROLE_ADMIN }
+       - { path: ^/electeurs, roles: ROLE_USER }
+       - { path: ^/candidats, roles: ROLE_CANDIDAT }
+       - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+       - { path: ^/api,  roles: IS_AUTHENTICATED_FULLY }
+
+    role_hierarchy:
+        ROLE_ELECTEUR: ROLE_USER
+        ROLE_CANDIDAT: ROLE_ELECTEUR  
+        ROLE_ADMIN: ROLE_CANDIDAT   

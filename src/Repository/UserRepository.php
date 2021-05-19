@@ -36,6 +36,24 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->_em->flush();
     }
 
+//Le entityfournisseur ne peut interroger qu'à partir d'un champ spécifique , 
+//spécifié par la propertyclé de configuration. Si vous voulez un peu plus 
+//de contrôle sur cela - par exemple, vous voulez trouver un utilisateur par email ou username 
+
+    public function loadUserByUsername(string $usernameOrEmail): ?User
+    {
+        $entityManager = $this->getEntityManager();
+
+        return $entityManager->createQuery(
+                'SELECT u
+                FROM App\Entity\User u
+                WHERE u.username = :query
+                OR u.email = :query'
+            )
+            ->setParameter('query', $usernameOrEmail)
+            ->getOneOrNullResult();
+    }
+
     // /**
     //  * @return User[] Returns an array of User objects
     //  */

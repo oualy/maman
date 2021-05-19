@@ -7,9 +7,12 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\CandidatsRepository;
 use ApiPlatform\Core\Annotation\ApiResource;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ApiResource(
+ * normalizationContext={"groups"={"candidats:read"}},
+ * denormalizationContext={"groups"={"candidats:write"}},
  * collectionOperations={
  * "get"={},
  * "post"={},
@@ -27,47 +30,48 @@ class Candidats
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"candidats:read","candidats:write"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="string", length=255)
+     *  @Groups({"candidats:read","candidats:write"})
      */
     private $prenomCandidat;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"candidats:read","candidats:write"})
      */
     private $nomCandidat;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"candidats:read","candidats:write"})
      */
     private $nomParti;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"candidats:read","candidats:write"})
      */
     private $classe;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"candidats:read","candidats:write"})
      */
     private $photo;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Role::class, inversedBy="candidats")
+     * @ORM\OneToMany(targetEntity=User::class, mappedBy="candidats")
      */
-    private $role;
-
-    /**
-     * @ORM\OneToMany(targetEntity=User::class, mappedBy="candidat")
-     */
-    private $users;
+    private $user;
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
+        $this->user = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -135,31 +139,19 @@ class Candidats
         return $this;
     }
 
-    public function getRole(): ?Role
-    {
-        return $this->role;
-    }
-
-    public function setRole(?Role $role): self
-    {
-        $this->role = $role;
-
-        return $this;
-    }
-
     /**
      * @return Collection|User[]
      */
-    public function getUsers(): Collection
+    public function getUser(): Collection
     {
-        return $this->users;
+        return $this->user;
     }
 
     public function addUser(User $user): self
     {
-        if (!$this->users->contains($user)) {
-            $this->users[] = $user;
-            $user->setCandidat($this);
+        if (!$this->user->contains($user)) {
+            $this->user[] = $user;
+            $user->setCandidats($this);
         }
 
         return $this;
@@ -167,15 +159,14 @@ class Candidats
 
     public function removeUser(User $user): self
     {
-        if ($this->users->removeElement($user)) {
+        if ($this->user->removeElement($user)) {
             // set the owning side to null (unless already changed)
-            if ($user->getCandidat() === $this) {
-                $user->setCandidat(null);
+            if ($user->getCandidats() === $this) {
+                $user->setCandidats(null);
             }
         }
 
         return $this;
     }
-
     
 }

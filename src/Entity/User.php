@@ -2,15 +2,18 @@
 
 namespace App\Entity;
 
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
+
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\UserRepository;
 use ApiPlatform\Core\Annotation\ApiResource;
+use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\Encoder\EncoderAwareInterface;
 
 /**
  * @ApiResource(
+ * normalizationContext={"groups"={"user:read"}},
+ * denormalizationContext={"groups"={"user:write"}},
  * collectionOperations={
  * "get"={},
  * "post"={},
@@ -23,17 +26,19 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * )
  * @ORM\Entity(repositoryClass=UserRepository::class)
  */
-class User implements UserInterface
+class User implements UserInterface, EncoderAwareInterface  
 {
     /**
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"user:read"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="string", length=180, unique=true)
+     * @Groups({"user:read","user:write"})
      */
     private $username;
 
@@ -45,29 +50,44 @@ class User implements UserInterface
     /**
      * @var string The hashed password
      * @ORM\Column(type="string")
+     * @Groups({"user:read","user:write"})
      */
     private $password;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Admin::class, inversedBy="users")
+     * @ORM\Column(type="boolean")
+     * @Groups({"user:read","user:write"})
+     */
+    private $isActive;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=Electeur::class, inversedBy="user")
+     * @Groups({"user:read","user:write"})
+     */
+    private $electeur;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=Candidats::class, inversedBy="user")
+     * @Groups({"user:read","user:write"})
+     */
+    private $candidats;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=Admin::class, inversedBy="user")
+     * @Groups({"user:read","user:write"})
      */
     private $admins;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Candidats::class, inversedBy="users")
+     * @ORM\ManyToOne(targetEntity=Roles::class, inversedBy="users")
+     * @Groups({"user:read","user:write"})
      */
-    private $candidat;
+    private $role;
 
-    /**
-     * @ORM\OneToMany(targetEntity=Electeur::class, mappedBy="user")
-     */
-    private $electeur;
-
-    public function __construct()
-    {
-        $this->electeur = new ArrayCollection();
+    public function __construct($username)    {
+        $this->isActive = true;
+        $this->username = $username;
     }
-
 
     public function getId(): ?int
     {
@@ -145,6 +165,42 @@ class User implements UserInterface
         // $this->plainPassword = null;
     }
 
+    public function getIsActive(): ?bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): self
+    {
+        $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function getElecteur(): ?Electeur
+    {
+        return $this->electeur;
+    }
+
+    public function setElecteur(?Electeur $electeur): self
+    {
+        $this->electeur = $electeur;
+
+        return $this;
+    }
+
+    public function getCandidats(): ?Candidats
+    {
+        return $this->candidats;
+    }
+
+    public function setCandidats(?Candidats $candidats): self
+    {
+        $this->candidats = $candidats;
+
+        return $this;
+    }
+
     public function getAdmins(): ?Admin
     {
         return $this->admins;
@@ -157,47 +213,40 @@ class User implements UserInterface
         return $this;
     }
 
-    public function getCandidat(): ?Candidats
+    public function getRole(): ?Roles
     {
-        return $this->candidat;
+        return $this->role;
     }
 
-    public function setCandidat(?Candidats $candidat): self
+    public function setRole(?Roles $role): self
     {
-        $this->candidat = $candidat;
+        $this->role = $role;
 
         return $this;
+    }
+
+     /**
+     * Indique si l'utilisateur utilise l'encodage de mot de passe legacy ou le nouveau
+     * 
+     * @return boolean
+     */
+    public function hasLegacyPassword(): bool
+    {
+        return null !== $this->oldPassword;
     }
 
     /**
-     * @return Collection|Electeur[]
+     * {@inheritDoc}
      */
-    public function getElecteur(): Collection
+    public function getEncoderName()
     {
-        return $this->electeur;
-    }
-
-    public function addElecteur(Electeur $electeur): self
-    {
-        if (!$this->electeur->contains($electeur)) {
-            $this->electeur[] = $electeur;
-            $electeur->setUser($this);
+        if ($this->hasLegacyPassword()) {
+            // L'utilisateur est configuré avec un mot de passe legacy, utiliser l'encodeur legacy
+            // configured in security.yaml
+            return 'legacy_encoder';
         }
 
-        return $this;
+        // L'utilisateur est configuré avec l'encodage par défaut (ici Argon2i), utiliser l'encodeur par défaut
+        return null;
     }
-
-    public function removeElecteur(Electeur $electeur): self
-    {
-        if ($this->electeur->removeElement($electeur)) {
-            // set the owning side to null (unless already changed)
-            if ($electeur->getUser() === $this) {
-                $electeur->setUser(null);
-            }
-        }
-
-        return $this;
-    }
-
-    
 }
